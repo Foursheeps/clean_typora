@@ -4,12 +4,12 @@ import re
 import argparse
 from pathlib import Path
 
-def find_readme_file(directory):
-    """Find README.md file in the given directory."""
-    readme_path = Path(directory) / "README.md"
-    if readme_path.exists():
-        return [readme_path]
-    return []
+def find_markdown_files(directory):
+    """Find all .md files in the given directory."""
+    markdown_files = []
+    for file in Path(directory).rglob("*.md"):
+        markdown_files.append(file)
+    return markdown_files
 
 def extract_image_references(markdown_file):
     """Extract all image references from a markdown file."""
@@ -36,19 +36,25 @@ def extract_image_references(markdown_file):
 
 def find_assets_folders(directory):
     """Find all .assets folders in the given directory and its subdirectories."""
-    return [Path(directory) / "assets"]
+    assets_folders = []
+    for root, dirs, _ in os.walk(directory):
+        for dir in dirs:
+            if dir == "assets":
+                assets_folders.append(Path(root) / "assets")
+    return assets_folders
 
 def clean_unused_images(directory):
     """Clean unused images in .assets folders."""
-    # Find README.md file
-    markdown_files = find_readme_file(directory)
+    # Find all markdown files
+    markdown_files = find_markdown_files(directory)
     if not markdown_files:
-        print("Error: README.md file not found in the specified directory!")
+        print("Error: No markdown files found in the specified directory!")
         return 0, 0
     
     # Collect all referenced images
     referenced_images = set()
     for md_file in markdown_files:
+        print(f"\nScanning {md_file}")
         image_refs = extract_image_references(md_file)
         for ref in image_refs:
             # Convert to absolute path
@@ -57,6 +63,9 @@ def clean_unused_images(directory):
     
     # Find all .assets folders
     assets_folders = find_assets_folders(directory)
+    if not assets_folders:
+        print("Error: No assets folders found in the specified directory!")
+        return 0, 0
     
     # Count statistics
     total_images = 0
@@ -84,9 +93,9 @@ def clean_unused_images(directory):
     return total_images, removed_images
 
 def main():
-    parser = argparse.ArgumentParser(description='Clean unused images in Typora .assets folders referenced by README.md')
+    parser = argparse.ArgumentParser(description='Clean unused images in Typora .assets folders referenced by markdown files')
     parser.add_argument('directory', nargs='?', default='.',
-                      help='Directory containing README.md file (default: current directory)')
+                      help='Directory containing markdown files (default: current directory)')
     args = parser.parse_args()
 
     print("Starting cleanup process...")
